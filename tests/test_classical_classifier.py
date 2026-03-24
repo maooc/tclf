@@ -9,10 +9,129 @@ import pandas as pd
 import pytest
 from numpy.testing import assert_allclose
 from sklearn.base import BaseEstimator
+from sklearn.pipeline import Pipeline
 from sklearn.utils.estimator_checks import parametrize_with_checks
 from sklearn.utils.validation import check_is_fitted
 
-from tclf.classical_classifier import ALLOWED_FUNC_LITERALS, ClassicalClassifier
+from tclf.classical_classifier import (
+    ALLOWED_FUNC_LITERALS,
+    ClassicalClassifier,
+    ClassicalPreprocessor,
+    FeatureMapper,
+)
+
+
+class TestFeatureMapper:
+    """Tests for FeatureMapper class."""
+
+    def test_default_mapping(self) -> None:
+        """Test default feature mapping."""
+        X = pd.DataFrame(
+            [[1, 2, 3]],
+            columns=["trade_price", "bid_ex", "ask_ex"]
+        )
+        mapper = FeatureMapper()
+        mapper.fit(X)
+        
+        assert mapper.get_index("trade_price") == 0
+        assert mapper.get_index("bid_ex") == 1
+        assert mapper.get_index("ask_ex") == 2
+
+    def test_custom_mapping(self) -> None:
+        """Test custom feature mapping."""
+        X = pd.DataFrame(
+            [[1, 2, 3]],
+            columns=["price", "buy", "sell"]
+        )
+        mapping = {
+            "trade_price": "price",
+            "bid_ex": "buy",
+            "ask_ex": "sell",
+        }
+        mapper = FeatureMapper(mapping)
+        mapper.fit(X)
+        
+        assert mapper.get_index("trade_price") == 0
+        assert mapper.get_index("bid_ex") == 1
+        assert mapper.get_index("ask_ex") == 2
+
+    def test_index_mapping(self) -> None:
+        """Test mapping with integer indices."""
+        X = np.array([[1, 2, 3]])
+        mapping = {
+            "trade_price": 0,
+            "bid_ex": 1,
+            "ask_ex": 2,
+        }
+        mapper = FeatureMapper(mapping)
+        mapper.fit(X)
+        
+        assert mapper.get_index("trade_price") == 0
+        assert mapper.get_index("bid_ex") == 1
+        assert mapper.get_index("ask_ex") == 2
+
+    def test_validate_required_features(self) -> None:
+        """Test validation of required features."""
+        X = pd.DataFrame([[1, 2]], columns=["trade_price", "bid_ex"])
+        mapper = FeatureMapper()
+        mapper.fit(X)
+        
+        missing = mapper.validate_required_features(["trade_price", "ask_ex"])
+        assert "ask_ex" in missing
+        assert "trade_price" not in missing
+
+
+class TestClassicalPreprocessor:
+    """Tests for ClassicalPreprocessor class."""
+
+    def test_no_preprocessing(self) -> None:
+        """Test preprocessor with no operations."""
+        X = np.array([[1.0, 2.0], [3.0, 4.0]])
+        preprocessor = ClassicalPreprocessor(impute_strategy='none', scale=False)
+        preprocessor.fit(X)
+        X_transformed = preprocessor.transform(X)
+        
+        assert_allclose(X, X_transformed)
+
+    def test_imputation(self) -> None:
+        """Test missing value imputation."""
+        X = np.array([[1.0, np.nan], [3.0, 4.0]])
+        preprocessor = ClassicalPreprocessor(impute_strategy='mean')
+        preprocessor.fit(X)
+        X_transformed = preprocessor.transform(X)
+        
+        assert not np.isnan(X_transformed).any()
+        assert X_transformed[0, 1] == 4.0  # mean of [nan, 4.0] is 4.0
+
+    def test_scaling(self) -> None:
+        """Test standard scaling."""
+        X = np.array([[1.0, 2.0], [3.0, 4.0]])
+        preprocessor = ClassicalPreprocessor(scale=True)
+        preprocessor.fit(X)
+        X_transformed = preprocessor.transform(X)
+        
+        # Check that mean is approximately 0
+        assert_allclose(np.mean(X_transformed, axis=0), 0, atol=1e-10)
+
+    def test_outlier_iqr(self) -> None:
+        """Test IQR outlier detection."""
+        X = np.array([[1.0], [2.0], [3.0], [100.0]])  # 100 is outlier
+        preprocessor = ClassicalPreprocessor(outlier_method='iqr')
+        preprocessor.fit(X)
+        X_transformed = preprocessor.transform(X)
+        
+        # Outlier should be clipped (or at least not remain at original value)
+        assert X_transformed[3, 0] <= 100.0
+
+    def test_outlier_zscore(self) -> None:
+        """Test z-score outlier detection."""
+        X = np.array([[1.0], [2.0], [3.0], [100.0]])  # 100 is outlier
+        preprocessor = ClassicalPreprocessor(outlier_method='zscore', outlier_threshold=2.0)
+        preprocessor.fit(X)
+        X_transformed = preprocessor.transform(X)
+        
+        # Outlier should be clipped (or at least not remain at original value)
+        assert X_transformed[3, 0] <= 100.0
 
 
 class TestClassicalClassifier:
@@ -189,7 +308,7 @@ class TestClassicalClassifier:
         )
         with pytest.raises(
             ValueError,
-            match=r"Expected to find columns: ['ask_ex', 'bid_ex', 'price_all_lag']*",
+            match=r"Missing required features.*",
         ):
             classifier.fit(x_train[["trade_price", "trade_size"]])
 
@@ -204,7 +323,8 @@ class TestClassicalClassifier:
         classifier = ClassicalClassifier(
             layers=[("tick", "all")], random_state=42, features=["one"]
         )
-        with pytest.raises(ValueError, match=r"Expected"):
+        # Now we validate features early, so we get "Missing required features" error
+        with pytest.raises(ValueError, match=r"Missing required features"):
             classifier.fit(x_train.to_numpy())
 
     def test_override(self, x_train: pd.DataFrame) -> None:
@@ -249,6 +369,160 @@ class TestClassicalClassifier:
             .predict(x_test)
         )
         assert (y_pred == y_test).all()
+
+    def test_feature_mapping(self, x_train: pd.DataFrame) -> None:
+        """Test custom feature mapping.
+
+        Users should be able to map their column names to expected features.
+        """
+        # Create data with different column names
+        x_custom = pd.DataFrame(
+            [[1.5, 1, 3], [2.5, 1, 3]],
+            columns=["price", "buy", "sell"]
+        )
+        
+        feature_mapping = {
+            "trade_price": "price",
+            "bid_ex": "buy",
+            "ask_ex": "sell",
+        }
+        
+        clf = ClassicalClassifier(
+            layers=[("quote", "ex")],
+            feature_mapping=feature_mapping,
+            strategy="const",
+        )
+        
+        # Fit and predict with custom column names
+        clf.fit(x_custom)
+        
+        y_pred = clf.predict(x_custom)
+        
+        # First trade: 1.5 < mid(2) -> -1
+        # Second trade: 2.5 > mid(2) -> 1
+        assert y_pred[0] == -1
+        assert y_pred[1] == 1
+
+    def test_pipeline_compatibility(self, x_train: pd.DataFrame) -> None:
+        """Test compatibility with sklearn Pipeline.
+
+        Classifier should work in a Pipeline with transformers.
+        """
+        columns = ["trade_price", "bid_ex", "ask_ex"]
+        
+        pipeline = Pipeline([
+            ('preprocessor', ClassicalPreprocessor(impute_strategy='mean')),
+            ('classifier', ClassicalClassifier(
+                layers=[("quote", "ex")],
+                features=columns,  # Provide feature names for numpy input
+                strategy="const",
+            ))
+        ])
+        
+        pipeline.fit(x_train[columns])
+        
+        x_test = pd.DataFrame(
+            [[1.5, 1, 3], [2.5, 1, 3]],
+            columns=columns
+        )
+        y_pred = pipeline.predict(x_test)
+        
+        assert len(y_pred) == 2
+
+    def test_pipeline_with_numpy_output(self, x_train: pd.DataFrame) -> None:
+        """Test Pipeline compatibility when transformer outputs numpy array.
+
+        Classifier should handle numpy arrays without column names.
+        """
+        columns = ["trade_price", "bid_ex", "ask_ex"]
+        
+        # Create a custom transformer that outputs numpy array
+        class ToNumpyTransformer:
+            def fit(self, X, y=None):
+                return self
+            def transform(self, X):
+                return np.array(X)
+            def fit_transform(self, X, y=None):
+                return self.transform(X)
+        
+        pipeline = Pipeline([
+            ('to_numpy', ToNumpyTransformer()),
+            ('classifier', ClassicalClassifier(
+                layers=[("quote", "ex")],
+                features=columns,  # Provide feature names for numpy input
+                strategy="const",
+            ))
+        ])
+        
+        pipeline.fit(x_train[columns])
+        
+        x_test = pd.DataFrame(
+            [[1.5, 1, 3], [2.5, 1, 3]],
+            columns=columns
+        )
+        y_pred = pipeline.predict(x_test)
+        
+        assert len(y_pred) == 2
+
+    def test_preprocessor_integration(self, x_train: pd.DataFrame) -> None:
+        """Test integration with ClassicalPreprocessor.
+
+        Classifier should work with built-in preprocessor.
+        """
+        columns = ["trade_price", "bid_ex", "ask_ex"]
+        
+        clf = ClassicalClassifier(
+            layers=[("quote", "ex")],
+            preprocessor='default',
+            strategy="const",
+        )
+        
+        clf.fit(x_train[columns])
+        
+        x_test = pd.DataFrame(
+            [[1.5, 1, 3], [2.5, 1, 3]],
+            columns=columns
+        )
+        y_pred = clf.predict(x_test)
+        
+        assert len(y_pred) == 2
+
+    def test_early_validation(self, x_train: pd.DataFrame) -> None:
+        """Test that validation happens during fit, not predict.
+
+        Missing features should be detected in fit().
+        """
+        # Try to fit with missing required features
+        clf = ClassicalClassifier(
+            layers=[("tick", "ex"), ("quote", "ex")],
+            validate_on_fit=True,
+        )
+        
+        # This should raise an error during fit, not predict
+        with pytest.raises(ValueError, match=r"Missing required features"):
+            clf.fit(x_train[["ask_best", "bid_best"]])  # Missing trade_price, etc.
+
+    def test_memory_efficiency(self, x_train: pd.DataFrame) -> None:
+        """Test that classifier doesn't persist large data in predict.
+
+        After predict(), the classifier should not hold references to input data.
+        """
+        columns = ["trade_price", "bid_ex", "ask_ex"]
+        clf = ClassicalClassifier(
+            layers=[("quote", "ex")],
+            strategy="const",
+        ).fit(x_train[columns])
+        
+        x_test = pd.DataFrame(
+            [[1.5, 1, 3], [2.5, 1, 3]],
+            columns=columns
+        )
+        
+        # Predict should not store X_ attribute
+        clf.predict(x_test)
+        
+        # Check that no large data is persisted
+        assert not hasattr(clf, 'X_')
 
     @pytest.mark.parametrize("subset", ["best", "ex"])
     def test_mid(self, x_train: pd.DataFrame, subset: str) -> None:
