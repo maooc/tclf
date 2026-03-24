@@ -30,6 +30,11 @@ pip install tclf
 uv add tclf
 ```
 
+**Docker 🐳**
+```console
+docker pull ghcr.io/karelze/tclf:latest
+```
+
 ## Supported Algorithms
 
 - (Rev.) CLNV rule[^1]
@@ -112,6 +117,56 @@ Like before, column/feature names must follow our [naming conventions](https://k
 ## Other Examples
 
 For more practical examples, see our [examples section](https://karelze.github.io/tclf/option_trade_classification).
+
+## Docker Deployment
+
+### Building the Docker Image
+```bash
+docker build -t tclf .
+```
+
+### Running the Demo Script (Default Command)
+```bash
+docker run --rm tclf
+```
+
+### Running the Demo Script Explicitly
+```bash
+docker run --rm tclf python /app/examples/demo.py
+```
+
+### Running the REST API Server
+```bash
+docker run -d -p 8000:8000 --name tclf-api tclf uvicorn app:app --host 0.0.0.0 --port 8000
+```
+
+The API will be available at `http://localhost:8000`. You can access the Swagger UI documentation at `http://localhost:8000/docs`.
+
+## REST API Usage
+
+### Health Check
+```bash
+curl http://localhost:8000/health
+```
+
+### Classification with JSON Data
+```bash
+curl -X POST "http://localhost:8000/predict/json" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "data": [[1.5, 1, 3], [2.5, 1, 3], [1.5, 3, 1]],
+    "features": ["trade_price", "bid_ex", "ask_ex"],
+    "layers": [["quote", "ex"]],
+    "strategy": "random"
+  }'
+```
+
+### Classification with CSV File
+```bash
+curl -X POST "http://localhost:8000/predict/csv" \
+  -F "file=@examples/sample_data.csv" \
+  -F "layers=[[\"quote\", \"ex\"]]"
+```
 
 ## Development
 
