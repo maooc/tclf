@@ -113,6 +113,109 @@ Like before, column/feature names must follow our [naming conventions](https://k
 
 For more practical examples, see our [examples section](https://karelze.github.io/tclf/option_trade_classification).
 
+## Docker Deployment
+
+### Building the Docker Image
+
+```bash
+docker build -t tclf:latest .
+```
+
+### 默认运行（演示脚本）
+
+默认情况下，运行容器会直接执行演示脚本：
+
+```bash
+# 默认运行 demo 脚本
+docker run --rm tclf:latest
+```
+
+### Docker 命令入口
+
+Docker 镜像支持多种运行模式：
+
+| 命令 | 说明 | 示例 |
+|------|------|------|
+| `api` | 启动 REST API 服务 | `docker run -p 8000:8000 tclf:latest api` |
+| `demo` | 运行演示脚本 | `docker run --rm tclf:latest demo` |
+| `train <file>` | 运行训练脚本 | `docker run --rm tclf:latest train examples/demo.py` |
+| `python <cmd>` | 运行 Python 命令 | `docker run --rm tclf:latest python -c "print(1+1)"` |
+
+### Running the REST API Service
+
+```bash
+# 启动 API 服务
+docker run -d -p 8000:8000 --name tclf-api tclf:latest api
+```
+
+The API will be available at `http://localhost:8000`.
+
+### Running Demo Scripts
+
+```bash
+# 运行内置 demo 脚本（默认命令）
+docker run --rm tclf:latest
+
+# 显式运行 demo 脚本
+docker run --rm tclf:latest demo
+
+# 运行自定义训练脚本
+docker run --rm -v $(pwd)/my_script.py:/app/my_script.py tclf:latest train my_script.py
+
+# 直接运行 Python 命令
+docker run --rm tclf:latest python examples/demo.py
+```
+
+### Using the REST API
+
+#### Health Check
+
+```bash
+curl http://localhost:8000/health
+```
+
+#### Predict with JSON Data
+
+```bash
+curl -X POST "http://localhost:8000/predict" \
+  -H "Content-Type: application/json" \
+  -d @examples/sample_request.json
+```
+
+#### Predict with CSV Upload
+
+```bash
+curl -X POST "http://localhost:8000/predict/csv" \
+  -F "file=@examples/sample_trades.csv" \
+  -F "layers=quote,ex|tick,ex" \
+  -F "strategy=random"
+```
+
+#### Batch Prediction
+
+```bash
+curl -X POST "http://localhost:8000/predict/batch" \
+  -H "Content-Type: application/json" \
+  -d '[
+    {"trade_price": 1.5, "bid_ex": 1.0, "ask_ex": 3.0},
+    {"trade_price": 2.5, "bid_ex": 1.0, "ask_ex": 3.0}
+  ]'
+```
+
+### API Documentation
+
+When the service is running, you can access:
+- Interactive API docs (Swagger UI): `http://localhost:8000/docs`
+- Alternative API docs (ReDoc): `http://localhost:8000/redoc`
+
+### Pre-built Images
+
+Pre-built Docker images are available from GitHub Container Registry:
+
+```bash
+docker pull ghcr.io/karelze/tclf:latest
+```
+
 ## Development
 
 We are using [`tox`](https://tox.wiki/en/latest/user_guide.html) with [`uv`](https://docs.astral.sh/uv/) for development.
