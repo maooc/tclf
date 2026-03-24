@@ -189,7 +189,7 @@ class TestClassicalClassifier:
         )
         with pytest.raises(
             ValueError,
-            match=r"Expected to find columns: ['ask_ex', 'bid_ex', 'price_all_lag']*",
+            match=r"Missing required features: \['ask_ex', 'bid_ex', 'price_all_lag'\]",
         ):
             classifier.fit(x_train[["trade_price", "trade_size"]])
 
@@ -204,7 +204,7 @@ class TestClassicalClassifier:
         classifier = ClassicalClassifier(
             layers=[("tick", "all")], random_state=42, features=["one"]
         )
-        with pytest.raises(ValueError, match=r"Expected"):
+        with pytest.raises(ValueError, match=r"Missing required features"):
             classifier.fit(x_train.to_numpy())
 
     def test_override(self, x_train: pd.DataFrame) -> None:
