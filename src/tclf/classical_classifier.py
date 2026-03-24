@@ -15,6 +15,7 @@ from sklearn.base import BaseEstimator, ClassifierMixin
 from sklearn.utils import check_random_state
 from sklearn.utils.validation import (
     _check_sample_weight,
+    check_array,
     check_is_fitted,
 )
 
@@ -474,12 +475,18 @@ class ClassicalClassifier(ClassifierMixin, BaseEstimator):
         if isinstance(X, pd.DataFrame):
             self.columns_ = X.columns.tolist()
 
-        X = self._validate_data(
-            X,
-            y="no_validation",
+        # Convert to numpy array first
+        if isinstance(X, pd.DataFrame):
+            X_array = X.to_numpy()
+        else:
+            X_array = np.asarray(X)
+        
+        # Validate array
+        X = check_array(
+            X_array,
             dtype=[np.float64, np.float32],
             accept_sparse=False,
-            force_all_finite=False,
+            ensure_all_finite=False,
         )
 
         self.classes_ = np.array([-1, 1])
@@ -514,11 +521,19 @@ class ClassicalClassifier(ClassifierMixin, BaseEstimator):
             npt.NDArray: Predicted traget values for X.
         """
         check_is_fitted(self)
-        X = self._validate_data(
-            X,
+        
+        # Convert to numpy array first
+        if isinstance(X, pd.DataFrame):
+            X_array = X.to_numpy()
+        else:
+            X_array = np.asarray(X)
+        
+        # Validate array
+        X = check_array(
+            X_array,
             dtype=[np.float64, np.float32],
             accept_sparse=False,
-            force_all_finite=False,
+            ensure_all_finite=False,
         )
 
         rs = check_random_state(self.random_state)
