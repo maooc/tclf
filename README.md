@@ -113,6 +113,100 @@ Like before, column/feature names must follow our [naming conventions](https://k
 
 For more practical examples, see our [examples section](https://karelze.github.io/tclf/option_trade_classification).
 
+## Docker Deployment
+
+This project provides Docker support for easy deployment and containerized execution.
+
+### Building Docker Image
+
+```console
+docker build -t tclf:latest .
+```
+
+### Running the Container
+
+The Docker image supports multiple modes via entrypoint. **Default mode runs the demo script:**
+
+**1. Run Demo Script (default):**
+```console
+docker run --rm tclf:latest
+# or explicitly:
+docker run --rm tclf:latest demo
+```
+
+**2. REST API Server:**
+```console
+docker run -p 8000:8000 tclf:latest api
+```
+
+**3. Classify Trades from CSV:**
+```console
+docker run --rm -v $(pwd)/data:/app/data tclf:latest train /app/data/trades.csv
+# With output file:
+docker run --rm -v $(pwd)/data:/app/data tclf:latest train /app/data/trades.csv -o /app/data/results.csv
+```
+
+When running the API server, it will be available at `http://localhost:8000`.
+
+### API Endpoints
+
+| Endpoint | Method | Description |
+|----------|--------|-------------|
+| `/` | GET | API information |
+| `/health` | GET | Health check |
+| `/predict` | POST | Classify trades from JSON data |
+| `/predict/csv` | POST | Classify trades from CSV file |
+| `/demo` | GET | Run demo with sample data |
+
+### API Usage Examples
+
+**1. Get API Info:**
+```console
+curl http://localhost:8000/
+```
+
+**2. Run Demo:**
+```console
+curl http://localhost:8000/demo
+```
+
+**3. Predict with JSON:**
+```console
+curl -X POST http://localhost:8000/predict \
+  -H "Content-Type: application/json" \
+  -d '{
+    "trade_data": {
+      "data": [
+        [1.5, 1, 3, 2, 2.5],
+        [2.5, 1, 3, 1, 3],
+        [1.5, 3, 1, 1, 3]
+      ],
+      "features": ["trade_price", "bid_ex", "ask_ex", "bid_best", "ask_best"]
+    },
+    "layers": [["quote", "ex"], ["quote", "best"]],
+    "strategy": "random"
+  }'
+```
+
+**4. Predict with CSV:**
+```console
+curl -X POST "http://localhost:8000/predict/csv?layers=quote:ex,quote:best&strategy=random" \
+  -F "file=@examples/sample_trades.csv"
+```
+
+### Using Pre-built Image from GHCR
+
+```console
+docker pull ghcr.io/karelze/tclf:latest
+docker run -p 8000:8000 ghcr.io/karelze/tclf:latest
+```
+
+### Interactive API Documentation
+
+Access the interactive Swagger UI documentation at:
+- Swagger UI: `http://localhost:8000/docs`
+- ReDoc: `http://localhost:8000/redoc`
+
 ## Development
 
 We are using [`tox`](https://tox.wiki/en/latest/user_guide.html) with [`uv`](https://docs.astral.sh/uv/) for development.
