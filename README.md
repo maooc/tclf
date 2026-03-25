@@ -124,6 +124,49 @@ tox -e test
 tox -e build
 ```
 
+## Testing
+
+### Running Tests
+
+The project uses `pytest` for testing. To run all tests:
+
+```bash
+# Run all tests
+python -m pytest tests/ -v
+
+# Run specific test file
+python -m pytest tests/test_core_functionality.py -v
+
+# Run specific test class or method
+python -m pytest tests/test_core_functionality.py::TestCoreFunctionality::test_fit_basic -v
+
+# Run tests with coverage report
+python -m pytest tests/ -v --cov=src --cov-report=term --cov-report=html
+```
+
+### Test Categories
+
+- **Unit Tests** (`tests/test_core_functionality.py`, `tests/test_classical_classifier.py`): Test individual components and methods
+- **Error Handling Tests** (`tests/test_error_handling.py`): Test edge cases and error scenarios
+- **Integration Tests** (`tests/test_integration.py`): Test end-to-end workflows and pipeline integration
+
+### Code Coverage
+
+To generate and view coverage reports:
+
+```bash
+# Generate terminal and HTML coverage reports
+python -m pytest tests/ -v --cov=src --cov-report=term --cov-report=html
+
+# View HTML coverage report
+open htmlcov/index.html
+```
+
+The coverage report shows:
+- Line-by-line coverage of source code
+- Branch coverage metrics
+- Missing lines that need test coverage
+
 ## Citation
 
 If you are using the package in publications, please cite as:
