@@ -124,6 +124,56 @@ tox -e test
 tox -e build
 ```
 
+## Testing
+
+### Running Tests
+
+**Run all tests:**
+```bash
+pytest tests/ -v
+```
+
+**Run specific test file:**
+```bash
+pytest tests/test_exceptions.py -v
+```
+
+**Run quick tests (no coverage):**
+```bash
+tox -e test-quick
+```
+
+### Test Coverage
+
+**Generate coverage report:**
+```bash
+pytest tests/ --cov=src --cov-report=term-missing --cov-report=html
+```
+
+**View HTML coverage report:**
+```bash
+open htmlcov/index.html
+```
+
+Or use tox:
+```bash
+tox -e coverage
+```
+
+### Test Structure
+
+- `tests/test_classical_classifier.py` - Core functionality tests
+- `tests/test_exceptions.py` - Exception handling and edge cases
+- `tests/test_integration.py` - Integration tests for complete pipelines
+- `tests/test_e2e.py` - End-to-end test script
+- `tests/conftest.py` - Shared fixtures
+
+### Running End-to-End Tests
+
+```bash
+python tests/test_e2e.py
+```
+
 ## Citation
 
 If you are using the package in publications, please cite as:
