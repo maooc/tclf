@@ -82,8 +82,10 @@ testpaths = ["tests"]
 omit = [
     "debug_*.py",
     "tclf/tests/*",
+    "tests/*",
 ]
 branch = true
+source = ["src"]
 
 [tool.coverage.report]
 exclude_also = [
@@ -97,6 +99,11 @@ exclude_also = [
     "if self.verbose:"
     ]
 show_missing = true
+precision = 2
+
+[tool.coverage.html]
+directory = "htmlcov"
+title = "tclf Coverage Report"
 
 [tool.commitizen]
 name = "cz_conventional_commits"
@@ -211,7 +218,21 @@ description = "tests"
 extras = [
     "dev"
 ]
-commands = [["pytest", "-v", "tests", "--cov=src", "--cov-report=xml"]]
+commands = [["pytest", "-v", "tests", "--cov=src", "--cov-report=term-missing", "--cov-report=html", "--cov-report=xml"]]
+
+[tool.tox.env.test-quick]
+description = "quick tests without coverage"
+extras = ["dev"]
+commands = [["pytest", "-v", "tests", "-x"]]
+
+[tool.tox.env.coverage]
+description = "generate coverage report"
+extras = ["dev"]
+commands = [
+    ["coverage", "run", "-m", "pytest", "tests"],
+    ["coverage", "report"],
+    ["coverage", "html"],
+]
 
 [tool.tox.env.build]
 description = "build the project"
