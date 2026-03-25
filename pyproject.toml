@@ -74,9 +74,12 @@ disallow_incomplete_defs = true
 
 [tool.pytest.ini_options]
 minversion = 7.0
-addopts = "-ra -p no:warnings -v --cov --cov-report term-missing --doctest-modules"
+addopts = "-ra -p no:warnings -v --cov=tclf --cov-report=term-missing --cov-report=html --doctest-modules"
 pythonpath = ["src"]
 testpaths = ["tests"]
+markers = [
+    "benchmark: marks tests as benchmark tests (deselect with '-m \"not benchmark\"')",
+]
 
 [tool.coverage.run]
 omit = [
