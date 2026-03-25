@@ -124,6 +124,62 @@ tox -e test
 tox -e build
 ```
 
+### Testing
+
+This project uses [pytest](https://docs.pytest.org/) for testing with [coverage](https://coverage.readthedocs.io/) for code coverage reporting.
+
+#### Running Tests
+
+**Run all tests:**
+```bash
+pytest
+```
+
+**Run only unit tests:**
+```bash
+pytest tests/test_unit.py -v
+```
+
+**Run only integration tests:**
+```bash
+pytest tests/test_integration.py -v
+```
+
+**Run tests excluding benchmark tests:**
+```bash
+pytest -m "not benchmark"
+```
+
+#### Coverage Reports
+
+**Generate console and HTML coverage report:**
+```bash
+pytest --cov=tclf --cov-report=term-missing --cov-report=html
+```
+
+**View HTML coverage report:**
+```bash
+# After running tests with HTML report
+open htmlcov/index.html
+```
+
+**Generate XML coverage report (for CI/CD):**
+```bash
+pytest --cov=tclf --cov-report=xml
+```
+
+**View coverage summary only:**
+```bash
+pytest --cov=tclf --cov-report=term
+```
+
+#### Test Structure
+
+- `tests/conftest.py` - Shared fixtures and test configuration
+- `tests/test_unit.py` - Unit tests for individual functions and methods
+- `tests/test_integration.py` - Integration and end-to-end tests
+- `tests/test_classical_classifier.py` - Original classifier tests
+
 ## Citation
 
 If you are using the package in publications, please cite as:
