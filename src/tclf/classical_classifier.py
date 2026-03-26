@@ -112,7 +112,7 @@ class ClassicalClassifier(ClassifierMixin, BaseEstimator):
         """
         return {
             "allow_nan": True,
-            "binary_only": True,
+            "binary_only": False,
             "requires_y": False,
             "poor_score": True,
             "_xfail_checks": {
@@ -482,7 +482,7 @@ class ClassicalClassifier(ClassifierMixin, BaseEstimator):
             force_all_finite=False,
         )
 
-        self.classes_ = np.array([-1, 1])
+        self.classes_ = np.array([1, -1])
 
         # if no features are provided or inferred, use default
         if self.columns_ is None:
@@ -566,13 +566,19 @@ class ClassicalClassifier(ClassifierMixin, BaseEstimator):
         Returns:
             npt.NDArray: probabilities
         """
+        # assign 0.5 to all classes. Required for strategy 'constant'.
         prob = np.full((len(X), 2), 0.5)
 
+        # Class can be assumed to be -1 or 1 for strategy 'random'.
+        # Class might be zero though for strategy constant. Mask non-zeros.
         preds = self.predict(X)
         mask = np.flatnonzero(preds)
 
+        # get index of predicted class and one-hot encode it
         indices = np.nonzero(preds[mask, None] == self.classes_[None, :])[1]
         n_classes = np.max(self.classes_) + 1
 
-        prob[mask] = np.identity(n_classes)[::-1][indices]
+        # overwrite defaults with one-hot encoded classes.
+        # For strategy 'constant' probabilities are (0.5,0.5).
+        prob[mask] = np.identity(n_classes)[indices]
         return prob
