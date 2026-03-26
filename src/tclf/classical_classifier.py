@@ -576,9 +576,9 @@ class ClassicalClassifier(ClassifierMixin, BaseEstimator):
 
         # get index of predicted class and one-hot encode it
         indices = np.nonzero(preds[mask, None] == self.classes_[None, :])[1]
-        n_classes = np.max(self.classes_) + 1
+        n_classes = len(self.classes_)
 
         # overwrite defaults with one-hot encoded classes.
         # For strategy 'constant' probabilities are (0.5,0.5).
-        prob[mask] = np.identity(n_classes)[indices]
+        prob[mask] = np.eye(n_classes)[indices]
         return prob
